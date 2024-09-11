@@ -1,0 +1,53 @@
+#rolodex {
+  > .window-content {
+    padding: 0;
+
+    > .sheet-navigation {
+      border-bottom: 1px solid var(--color-border-light-primary);
+      display: flex;
+      flex: 0;
+
+      > a {
+        color: var(--color-pf-alternate);
+        display: block;
+        font: 400 var(--font-size-14) var(--serif);
+        padding: 0.5rem;
+
+        &.active {
+          font-weight: bold;
+          color: var(--color-pf-primary);
+        }
+
+        > i {
+          margin-left: 0.25rem;
+          visibility: hidden;
+        }
+
+        &:hover > i {
+          visibility: visible;
+        }
+      }
+    }
+
+    > .sheet-container {
+      display: flex;
+      overflow: hidden;
+
+      > .rolodex-sheet {
+        flex: 1;
+        position: relative;
+      }
+    }
+  }
+
+  .rolodex-sheet > .window-app {
+    flex: 1;
+    margin: 0;
+    position: unset;
+  }
+
+  .rolodex-sheet > .window-app > .window-header,
+  .rolodex-sheet > .window-app > .window-resizable-handle {
+    display: none;
+  }
+}

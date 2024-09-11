@@ -1,0 +1,21 @@
+{
+  "sheet-link": {
+    "rolodex": {
+      "enabled": "Enable Sheet Rolodex",
+      "hint": "Enables the rolodex-like sheet tabulation, which allows multiple sheets to be grouped in a single window.",
+      "title": "Rolodex"
+    },
+    "tablink": {
+      "enabled": "Enable \"Tab Linking\"",
+      "hint": "Enables the \"tablink\" feature for this client, which allows two actor sheets to share the active tab selection.",
+      "prompt": {
+        "select": "Select another sheet or token of the same type ({sheetType}) to link tabs."
+      },
+      "title": "Tablink",
+      "warning": {
+        "incompatibleTypes": "Incompatible sheets selected: linked sheets must be of the same actor type.",
+        "notRendered": "You must open the sheet before linking so the module can observe its rendered state."
+      }
+    }
+  }
+}

@@ -4,7 +4,7 @@
     "build": "yarn prebuild && esbuild src/index.js --bundle --keep-names --minify --sourcemap --outdir=dist/scripts",
     "dev": "yarn prebuild && esbuild src/index.js --bundle --keep-names --watch --sourcemap --outdir=dist/scripts",
     "link": "yarn node ./build/link-foundry.mjs",
-    "prebuild": "mkdir -p dist/scripts && cp -R module.json dist/"
+    "prebuild": "mkdir -p dist/scripts && cp -R static/ styles/ module.json dist/"
   },
   "devDependencies": {
     "esbuild": "^0.23.0",

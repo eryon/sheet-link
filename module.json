@@ -17,6 +17,13 @@
   "changelog": "https://github.com/eryon/sheet-link/blob/main/CHANGELOG.md",
   "download": "https://github.com/eryon/sheet-link/releases/download",
   "esmodules": ["scripts/index.js"],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "static/lang/en.json"
+    }
+  ],
   "license": "https://github.com/eryon/sheet-link/blob/main/LICENSE",
   "manifest": "https://github.com/eryon/sheet-link/releases/latest/download/module.json",
   "readme": "https://github.com/eryon/sheet-link/blob/main/README.md",
@@ -30,5 +37,6 @@
       }
     }
   },
+  "styles": ["styles/index.css"],
   "url": "https://github.com/eryon/sheet-link"
 }
