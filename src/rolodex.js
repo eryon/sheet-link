@@ -1,4 +1,4 @@
-import { localize, MODULE_ID } from './index';
+import { MODULE_ID } from './index';
 
 class RolodexApplication extends Application {
   static get defaultOptions() {
@@ -30,11 +30,19 @@ class RolodexApplication extends Application {
   }
 
   async addSheet(sheet) {
-    if(!this.rendered) await this._render(true);
+    if (!this.rendered) await this._render(true);
 
     const el = this.element[0];
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
+
+    // for sheets that use the Tagify library, destroy the handler (it will be recreated on re-render)
+    // noinspection CssInvalidHtmlTagReference
+    const tagify = sheet.querySelector('tagify-tags > input');
+    if (tagify) {
+      // noinspection JSUnresolvedReference
+      tagify.__tagify?.destroy();
+    }
 
     this.defaultPositions[appId] = { ...app.position };
 
@@ -60,12 +68,15 @@ class RolodexApplication extends Application {
     tab.setAttribute('class', 'tab rolodex-sheet');
     tab.append(sheet);
 
-    el.querySelector('.window-resizable-handle').style.zIndex = app.position.zIndex + 1;
+    const resizeHandle = el.querySelector('.window-resizable-handle');
+    resizeHandle.style.zIndex = Math.max(resizeHandle.style.zIndex, app.position.zIndex + 1);
+
     el.querySelector('.sheet-container').append(tab);
 
     // adjust size to fit container
     const bounds = el.querySelector('.sheet-container').getBoundingClientRect();
     app.setPosition({ left: 0, top: 0, width: bounds.width, height: bounds.height });
+    app.render(true);
 
     this.activateTab(sheetId);
   }
@@ -92,6 +103,13 @@ class RolodexApplication extends Application {
     const app = ui.windows[appId];
     const el = this.element[0];
 
+    // noinspection CssInvalidHtmlTagReference
+    const tagify = sheet.querySelector('tagify-tags > input');
+    if (tagify) {
+      // noinspection JSUnresolvedReference
+      tagify.__tagify?.destroy();
+    }
+
     document.body.append(sheet);
     app.setPosition(this.defaultPositions[appId]);
     app.render(true);
@@ -99,6 +117,25 @@ class RolodexApplication extends Application {
     el.querySelector(`#rolodex-tab-${sheet.id}`).remove();
     el.querySelector(`#rolodex-sheet-${sheet.id}`).remove();
     delete this.defaultPositions[appId];
+
+    if (this._tabs[0].active === sheet.id) {
+      const otherSheets = this.managedSheets;
+
+      if (otherSheets.length > 0) {
+        this.activateTab(otherSheets[0].id);
+      }
+    }
+  }
+
+  _getHeaderButtons() {
+    const buttons = super._getHeaderButtons();
+    const closeBtn = buttons.find((b) => b.class === 'close');
+
+    // override the default class because the built-in listeners are bound with anonymous functions that are not removed on reparenting or re-rendering
+    // if this class is not changed, then a sheet that is removed from the rolodex and closed will also trigger close on the rolodex
+    if (closeBtn) closeBtn.class = 'rolodex-close';
+
+    return buttons;
   }
 
   _onResize(event) {
@@ -120,7 +157,7 @@ export function registerSettings() {
   game.settings.register(MODULE_ID, 'RolodexEnabled', {
     name: `${MODULE_ID}.rolodex.enabled`,
     hint: `${MODULE_ID}.rolodex.hint`,
-    default: true,
+    default: false,
     config: true,
     requiresReload: true,
     scope: 'client',

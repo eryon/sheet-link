@@ -4,7 +4,7 @@ export function registerSettings() {
   game.settings.register(MODULE_ID, 'TabLinkEnabled', {
     name: `${MODULE_ID}.tablink.enabled`,
     hint: `${MODULE_ID}.tablink.hint`,
-    default: true,
+    default: false,
     config: true,
     requiresReload: true,
     scope: 'client',
