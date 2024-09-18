@@ -8,13 +8,15 @@
     "tablink": {
       "enabled": "Enable \"Tab Linking\"",
       "hint": "Enables the \"tablink\" feature for this client, which allows two actor sheets to share the active tab selection.",
+      "linkActivated": "Tablink is now activated between {sheetName} <-> {otherSheetNames}.",
+      "linkDeactivated": "{sheetName} has been successfully unlinked.",
       "prompt": {
         "select": "Select another sheet or token of the same type ({sheetType}) to link tabs."
       },
       "title": "Tablink",
       "warning": {
-        "incompatibleTypes": "Incompatible sheets selected: linked sheets must be of the same actor type.",
-        "notRendered": "You must open the sheet before linking so the module can observe its rendered state."
+        "dissimilarTypes": "Not all linked sheets are of the same actor type, and therefore tab selections may not be reflected across all linked sheets.",
+        "noTarget": "Could not determine the selected target sheet. Please try again."
       }
     }
   }
