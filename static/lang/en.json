@@ -1,6 +1,10 @@
 {
   "sheet-link": {
     "rolodex": {
+      "controls": {
+        "maximize": "Pop the active sheet out of the rolodex window",
+        "ping": "Ping the active actor's token"
+      },
       "enabled": "Enable Sheet Rolodex",
       "hint": "Enables the rolodex-like sheet tabulation, which allows multiple sheets to be grouped in a single window.",
       "title": "Rolodex"

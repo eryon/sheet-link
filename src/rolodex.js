@@ -22,11 +22,25 @@ class RolodexApplication extends Application {
     super();
 
     this.defaultPositions = {};
+    this.managedSheetIds = {};
+  }
+
+  get activeSheet() {
+    const el = this.element[0];
+    return el?.querySelector('.rolodex-sheet.active > .window-app');
   }
 
   get managedSheets() {
     const el = this.element[0];
-    return Array.from(el.querySelectorAll('.rolodex-sheet .window-app'));
+    return !el ? [] : Array.from(el.querySelectorAll('.rolodex-sheet .window-app'));
+  }
+
+  async activate(app) {
+    if (!this.managedSheetIds[app.id]) return;
+
+    await this.maximize();
+    this.bringToTop();
+    this.activateTab(app.id);
   }
 
   async addSheet(sheet) {
@@ -44,20 +58,17 @@ class RolodexApplication extends Application {
       tagify.__tagify?.destroy();
     }
 
-    this.defaultPositions[appId] = { ...app.position };
-
     const sheetId = sheet.id;
+
+    this.defaultPositions[appId] = { ...app.position };
+    this.managedSheetIds[sheetId] = true;
 
     // create tab navigation items
     const tabNav = document.createElement('a');
     tabNav.id = `rolodex-tab-${sheetId}`;
     tabNav.dataset.tab = sheetId;
+    tabNav.title = app.actor.name;
     tabNav.append(app.actor.name);
-
-    const popout = document.createElement('i');
-    popout.setAttribute('class', 'fa fa-maximize');
-    popout.addEventListener('click', () => this.removeSheet(sheet));
-    tabNav.append(popout);
 
     el.querySelector('.sheet-navigation').append(tabNav);
 
@@ -93,12 +104,25 @@ class RolodexApplication extends Application {
 
   async closeManagedSheet(appId) {
     const app = ui.windows[appId];
+
     app.setPosition(this.defaultPositions[appId]);
+    delete this.managedSheetIds[app.id];
 
     return app.close({ force: true });
   }
 
-  removeSheet(sheet) {
+  async pingActiveToken() {
+    if (!canvas.ready || !this.activeSheet) return;
+
+    const appId = this.activeSheet.dataset.appid;
+    const app = ui.windows[appId];
+
+    if (!app || !app.token) return;
+
+    return canvas.ping(app.token.center);
+  }
+
+  async removeSheet(sheet) {
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
     const el = this.element[0];
@@ -119,11 +143,13 @@ class RolodexApplication extends Application {
     delete this.defaultPositions[appId];
 
     if (this._tabs[0].active === sheet.id) {
-      const otherSheets = this.managedSheets;
-
-      if (otherSheets.length > 0) {
-        this.activateTab(otherSheets[0].id);
+      if (this.managedSheets.length > 0) {
+        this.activateTab(this.managedSheets.at(0).id);
       }
+    }
+
+    if (this.managedSheets.length === 0) {
+      await this.close({ force: true });
     }
   }
 
@@ -136,6 +162,19 @@ class RolodexApplication extends Application {
     if (closeBtn) closeBtn.class = 'rolodex-close';
 
     return buttons;
+  }
+
+  async _renderInner(data, options) {
+    const html = await super._renderInner(data, options);
+
+    html[0]
+      .querySelector('.sheet-navigation-controls [data-action="maximize"]')
+      .addEventListener('click', async () => this.removeSheet(this.activeSheet));
+    html[0]
+      .querySelector('.sheet-navigation-controls [data-action="ping"]')
+      .addEventListener('click', async () => this.pingActiveToken());
+
+    return html;
   }
 
   _onResize(event) {
@@ -153,6 +192,17 @@ class RolodexApplication extends Application {
 
 export let instance = new RolodexApplication();
 
+Hooks.once('libWrapper.Ready', () => {
+  libWrapper.register(
+    MODULE_ID,
+    'Application.prototype.bringToTop',
+    async function () {
+      return instance.activate(this);
+    },
+    'LISTENER'
+  );
+});
+
 export function registerSettings() {
   game.settings.register(MODULE_ID, 'RolodexEnabled', {
     name: `${MODULE_ID}.rolodex.enabled`,
@@ -168,6 +218,11 @@ export function registerSettings() {
 export function setup() {
   if (!game.settings.get(MODULE_ID, 'RolodexEnabled')) return;
 
+  if (!game.modules.get('lib-wrapper')?.active && game.user.isGM) {
+    ui.notifications.error('sheet-link rolodex requires the "libWrapper" module. Please install and activate it.');
+    return;
+  }
+
   Hooks.on('getActorSheetHeaderButtons', (sheet, buttons) => {
     buttons.splice(-1, 0, {
       class: 'rolodex',
@@ -176,8 +231,6 @@ export function setup() {
       onclick: () => onStartRolodex(sheet)
     });
   });
-
-  instance.render(true);
 }
 
 async function onStartRolodex(sheet) {

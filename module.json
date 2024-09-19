@@ -28,6 +28,16 @@
   "manifest": "https://github.com/eryon/sheet-link/releases/latest/download/module.json",
   "readme": "https://github.com/eryon/sheet-link/blob/main/README.md",
   "relationships": {
+    "requires": [
+      {
+        "id": "lib-wrapper",
+        "type": "module",
+        "compatibility": {
+          "minimum": "1.13.0.0",
+          "verified": "1.13.0.0"
+        }
+      }
+    ],
     "systems": {
       "id": "pf2e",
       "type": "system",
