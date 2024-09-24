@@ -21,8 +21,7 @@ class RolodexApplication extends Application {
   constructor() {
     super();
 
-    this.defaultPositions = {};
-    this.managedSheetIds = {};
+    this.sheets = {};
   }
 
   get activeSheet() {
@@ -30,17 +29,12 @@ class RolodexApplication extends Application {
     return el?.querySelector('.rolodex-sheet.active > .window-app');
   }
 
-  get managedSheets() {
-    const el = this.element[0];
-    return !el ? [] : Array.from(el.querySelectorAll('.rolodex-sheet .window-app'));
-  }
-
-  async activate(app) {
-    if (!this.managedSheetIds[app.id]) return;
+  async activate(sheet) {
+    if (!this.sheets[sheet.id]) return;
 
     await this.maximize();
     this.bringToTop();
-    this.activateTab(app.id);
+    this.activateTab(sheet.id);
   }
 
   async addSheet(sheet) {
@@ -59,9 +53,7 @@ class RolodexApplication extends Application {
     }
 
     const sheetId = sheet.id;
-
-    this.defaultPositions[appId] = { ...app.position };
-    this.managedSheetIds[sheetId] = true;
+    this.sheets[sheetId] = { app, appId, defaultPosition: { ...app.position } };
 
     // create tab navigation items
     const tabNav = document.createElement('a');
@@ -69,6 +61,8 @@ class RolodexApplication extends Application {
     tabNav.dataset.tab = sheetId;
     tabNav.title = app.actor.name;
     tabNav.append(app.actor.name);
+    tabNav.addEventListener('mouseout', this._onTabHoverOut.bind(this));
+    tabNav.addEventListener('mouseover', this._onTabHoverIn.bind(this));
 
     el.querySelector('.sheet-navigation').append(tabNav);
 
@@ -95,18 +89,18 @@ class RolodexApplication extends Application {
   async close(options) {
     await Promise.all([
       super.close(options),
-      ...this.managedSheets.map(async (ms) => this.closeManagedSheet(ms.dataset.appid))
+      ...Object.keys(this.sheets).map(async (key) => this.closeManagedSheet(key))
     ]);
 
     instance = new RolodexApplication();
     return Promise.resolve();
   }
 
-  async closeManagedSheet(appId) {
-    const app = ui.windows[appId];
+  async closeManagedSheet(id) {
+    const app = this.sheets[id].app;
 
-    app.setPosition(this.defaultPositions[appId]);
-    delete this.managedSheetIds[app.id];
+    app.setPosition(this.sheets[id].defaultPosition);
+    delete this.sheets[id];
 
     return app.close({ force: true });
   }
@@ -135,20 +129,26 @@ class RolodexApplication extends Application {
     }
 
     document.body.append(sheet);
-    app.setPosition(this.defaultPositions[appId]);
+    app.setPosition(this.sheets[sheet.id].defaultPosition);
     app.render(true);
 
-    el.querySelector(`#rolodex-tab-${sheet.id}`).remove();
+    const tabNav = el.querySelector(`#rolodex-tab-${sheet.id}`);
+    tabNav.removeEventListener('mouseout', this._onTabHoverOut);
+    tabNav.removeEventListener('mouseover', this._onTabHoverIn);
+    tabNav.remove();
+
     el.querySelector(`#rolodex-sheet-${sheet.id}`).remove();
-    delete this.defaultPositions[appId];
+    delete this.sheets[sheet.id];
+
+    const managedSheets = Object.keys(this.sheets);
 
     if (this._tabs[0].active === sheet.id) {
-      if (this.managedSheets.length > 0) {
-        this.activateTab(this.managedSheets.at(0).id);
+      if (managedSheets.length > 0) {
+        this.activateTab(managedSheets.at(0));
       }
     }
 
-    if (this.managedSheets.length === 0) {
+    if (managedSheets.length === 0) {
       await this.close({ force: true });
     }
   }
@@ -183,10 +183,27 @@ class RolodexApplication extends Application {
     const el = this.element[0];
     const bounds = el.querySelector('.sheet-container').getBoundingClientRect();
 
-    this.managedSheets.forEach((ms) => {
-      const app = ui.windows[ms.dataset.appid];
+    Object.values(this.sheets).forEach(({ app }) => {
       app.setPosition({ left: 0, top: 0, width: bounds.width, height: bounds.height });
     });
+  }
+
+  _onTabHoverIn(event) {
+    event.stopPropagation();
+
+    const tab = event.target.dataset.tab;
+    if (!tab) return;
+
+    this.sheets[tab].app.token?.object?._onHoverIn(event, { hoverOutOthers: true });
+  }
+
+  _onTabHoverOut(event) {
+    event.stopPropagation();
+
+    const tab = event.target.dataset.tab;
+    if (!tab) return;
+
+    this.sheets[tab].app.token?.object?._onHoverOut(event);
   }
 }
 
