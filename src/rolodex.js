@@ -194,7 +194,11 @@ class RolodexApplication extends Application {
     const tab = event.target.dataset.tab;
     if (!tab) return;
 
-    this.sheets[tab].app.token?.object?._onHoverIn(event, { hoverOutOthers: true });
+    const token = this.sheets[tab].app.token?.object;
+
+    if (token?.visible) {
+      token._onHoverIn(event, { hoverOutOthers: true });
+    }
   }
 
   _onTabHoverOut(event) {
