@@ -264,8 +264,9 @@ class RolodexApplication extends Application {
     if (!tab) return Promise.resolve();
 
     const token = this.sheets[tab].app.actor.getActiveTokens().at(0);
-    token.control({ releaseOthers: true });
+    if (!token) return Promise.resolve();
 
+    token.control({ releaseOthers: true });
     return canvas.animatePan({ ...token.center, duration: 500 });
   }
 
