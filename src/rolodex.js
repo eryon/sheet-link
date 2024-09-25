@@ -78,6 +78,7 @@ class RolodexApplication extends Application {
     tabNav.append(app.actor.name);
     tabNav.addEventListener('mouseout', this._onTabHoverOut.bind(this));
     tabNav.addEventListener('mouseover', this._onTabHoverIn.bind(this));
+    tabNav.addEventListener('dblclick', this._onTabDblClick.bind(this));
 
     if (isActiveCombatant) {
       tabNav.classList.add('activeCombatant');
@@ -253,6 +254,19 @@ class RolodexApplication extends Application {
     Object.values(this.sheets).forEach(({ app }) => {
       app.setPosition({ left: 0, top: 0, width: bounds.width, height: bounds.height });
     });
+  }
+
+  async _onTabDblClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const tab = event.target.dataset.tab;
+    if (!tab) return Promise.resolve();
+
+    const token = this.sheets[tab].app.actor.getActiveTokens().at(0);
+    token.control({ releaseOthers: true });
+
+    return canvas.animatePan({ ...token.center, duration: 500 });
   }
 
   _onTabHoverIn(event) {
