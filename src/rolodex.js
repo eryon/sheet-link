@@ -23,6 +23,10 @@ class RolodexApplication extends Application {
 
     this._highlights = [];
     this.sheets = {};
+
+    Hooks.on('combatTurnChange', this.onCombatTurnChange.bind(this));
+    Hooks.on('deleteCombat', this.onCombatDelete.bind(this));
+    Hooks.on('updateCombat', this.onCombatUpdate.bind(this));
   }
 
   get activeSheet() {
@@ -49,6 +53,7 @@ class RolodexApplication extends Application {
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
     const el = this.element[0];
+    const isActiveCombatant = game.combat?.combatant?.actorId === app.actor.id;
     const sheetId = sheet.id;
 
     if (this.sheets[sheetId]) {
@@ -74,6 +79,10 @@ class RolodexApplication extends Application {
     tabNav.addEventListener('mouseout', this._onTabHoverOut.bind(this));
     tabNav.addEventListener('mouseover', this._onTabHoverIn.bind(this));
 
+    if (isActiveCombatant) {
+      tabNav.classList.add('activeCombatant');
+    }
+
     el.querySelector('.sheet-navigation').append(tabNav);
 
     // create tab content
@@ -93,10 +102,16 @@ class RolodexApplication extends Application {
     app.setPosition({ left: 0, top: 0, width: bounds.width, height: bounds.height });
     app.render(true);
 
-    if (activate) this.activateTab(sheetId);
+    if (activate && (isActiveCombatant || !game.settings.get(MODULE_ID, 'RolodexCombatAutoSelect'))) {
+      this.activateTab(sheetId);
+    }
   }
 
   async close(options) {
+    Hooks.off('combatTurnChange', this.onCombatTurnChange);
+    Hooks.off('deleteCombat', this.onCombatDelete);
+    Hooks.off('updateCombat', this.onCombatUpdate);
+
     await Promise.all([
       super.close(options),
       ...Object.keys(this.sheets).map(async (key) => this.closeManagedSheet(key))
@@ -113,6 +128,48 @@ class RolodexApplication extends Application {
     delete this.sheets[id];
 
     return app.close({ force: true });
+  }
+
+  async onCombatDelete(combat) {
+    const el = this.element[0];
+
+    for (const [sheetId, { app }] of Object.entries(this.sheets)) {
+      const tab = el.querySelector(`.sheet-navigation a[id^=rolodex-tab][data-tab="${sheetId}"]`);
+      if (!tab || !app.actor) continue;
+
+      if (app.actor.id === combat.combatant?.actorId) {
+        tab.classList.remove('activeCombatant');
+      }
+    }
+  }
+
+  async onCombatTurnChange(combat, prior, current) {
+    const el = this.element[0];
+
+    for (const [sheetId, { app }] of Object.entries(this.sheets)) {
+      const tab = el.querySelector(`.sheet-navigation a[id^=rolodex-tab][data-tab="${sheetId}"]`);
+      if (!tab || !app.actor) continue;
+
+      tab.classList.remove('activeCombatant');
+
+      for (const token of app.actor.getActiveTokens()) {
+        if (token.id === current.tokenId) {
+          tab.classList.add('activeCombatant');
+
+          if (game.settings.get(MODULE_ID, 'RolodexCombatAutoSelect')) {
+            this.activateTab(sheetId);
+          }
+
+          break;
+        }
+      }
+    }
+  }
+
+  async onCombatUpdate(combat, { active }) {
+    if (!active || !combat.combatant) return;
+
+    return this.onCombatTurnChange(combat, null, combat.combatant);
   }
 
   async pingActiveToken() {
@@ -204,7 +261,7 @@ class RolodexApplication extends Application {
     const tab = event.target.dataset.tab;
     if (!tab) return;
 
-    for(const token of this.sheets[tab].app.actor.getActiveTokens()) {
+    for (const token of this.sheets[tab].app.actor.getActiveTokens()) {
       if (token?.visible) {
         token._onHoverIn(event);
         this._highlights.push(token);
@@ -235,11 +292,20 @@ Hooks.once('libWrapper.Ready', () => {
 
 export function registerSettings() {
   game.settings.register(MODULE_ID, 'RolodexEnabled', {
-    name: `${MODULE_ID}.rolodex.enabled`,
-    hint: `${MODULE_ID}.rolodex.hint`,
+    name: `${MODULE_ID}.rolodex.settings.enabled.title`,
+    hint: `${MODULE_ID}.rolodex.settings.enabled.hint`,
     default: false,
     config: true,
     requiresReload: true,
+    scope: 'client',
+    type: Boolean
+  });
+  game.settings.register(MODULE_ID, 'RolodexCombatAutoSelect', {
+    name: `${MODULE_ID}.rolodex.settings.combatAutoSelect.title`,
+    hint: `${MODULE_ID}.rolodex.settings.combatAutoSelect.hint`,
+    default: false,
+    config: true,
+    requiresReload: false,
     scope: 'client',
     type: Boolean
   });
@@ -279,7 +345,10 @@ async function selectAndOpenRolodex() {
   // delay to allow rendering events to finish
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      instance.activate({ id: Array.from(instance.rolodexTabs).at(-1).dataset.tab }).then(resolve).catch(reject);
+      instance
+        .activate({ id: Array.from(instance.rolodexTabs).at(-1).dataset.tab })
+        .then(resolve)
+        .catch(reject);
     }, 0);
   });
 }

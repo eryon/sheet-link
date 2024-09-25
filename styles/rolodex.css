@@ -19,6 +19,7 @@
           font: 400 var(--font-size-14) var(--serif);
           overflow: hidden;
           padding: 0.5rem;
+          position: relative;
           text-align: center;
           text-overflow: ellipsis;
           width: 140px;
@@ -37,6 +38,18 @@
 
           &:hover > i {
             opacity: 1;
+          }
+
+          &.activeCombatant {
+            &::after {
+              bottom: 0;
+              content: '\f71d';
+              font-family: var(--fa-style-family, 'FontAwesome');
+              font-weight: 300;
+              left: 50%;
+              position: absolute;
+              transform: translateX(-7px);
+            }
           }
         }
       }

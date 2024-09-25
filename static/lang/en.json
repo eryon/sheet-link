@@ -5,8 +5,16 @@
         "maximize": "Pop the active sheet out of the rolodex window",
         "ping": "Ping the active actor's token"
       },
-      "enabled": "Enable Sheet Rolodex",
-      "hint": "Enables the rolodex-like sheet tabulation, which allows multiple sheets to be grouped in a single window.",
+      "settings": {
+        "enabled": {
+          "hint": "Enables the rolodex-like sheet tabulation, which allows multiple sheets to be grouped in a single window.",
+          "title": "Enable Sheet Rolodex"
+        },
+        "combatAutoSelect": {
+          "hint": "Automatically select the rolodex tab of an actor on its turn in the active combat.",
+          "title": "Link to Combat"
+        }
+      },
       "title": "Rolodex",
       "warning": {
         "libWrapper": "sheet-link rolodex requires the \"libWrapper\" module. Please install and activate it.",
