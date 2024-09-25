@@ -7,7 +7,11 @@
       },
       "enabled": "Enable Sheet Rolodex",
       "hint": "Enables the rolodex-like sheet tabulation, which allows multiple sheets to be grouped in a single window.",
-      "title": "Rolodex"
+      "title": "Rolodex",
+      "warning": {
+        "libWrapper": "sheet-link rolodex requires the \"libWrapper\" module. Please install and activate it.",
+        "noTokenOnHotkey": "Please select at least one token to add to the rolodex."
+      }
     },
     "tablink": {
       "enabled": "Enable \"Tab Linking\"",

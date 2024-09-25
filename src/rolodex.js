@@ -1,4 +1,4 @@
-import { MODULE_ID } from './index';
+import { localize, MODULE_ID } from './index';
 
 class RolodexApplication extends Application {
   static get defaultOptions() {
@@ -21,12 +21,18 @@ class RolodexApplication extends Application {
   constructor() {
     super();
 
+    this._highlights = [];
     this.sheets = {};
   }
 
   get activeSheet() {
     const el = this.element[0];
     return el?.querySelector('.rolodex-sheet.active > .window-app');
+  }
+
+  get rolodexTabs() {
+    const el = this.element[0];
+    return el?.querySelectorAll('[id^=rolodex-tab-]');
   }
 
   async activate(sheet) {
@@ -37,12 +43,19 @@ class RolodexApplication extends Application {
     this.activateTab(sheet.id);
   }
 
-  async addSheet(sheet) {
+  async addSheet(sheet, activate = true) {
     if (!this.rendered) await this._render(true);
 
-    const el = this.element[0];
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
+    const el = this.element[0];
+    const sheetId = sheet.id;
+
+    if (this.sheets[sheetId]) {
+      return this.activate(sheet);
+    }
+
+    this.sheets[sheetId] = { app, appId, defaultPosition: { ...app.position } };
 
     // for sheets that use the Tagify library, destroy the handler (it will be recreated on re-render)
     // noinspection CssInvalidHtmlTagReference
@@ -51,9 +64,6 @@ class RolodexApplication extends Application {
       // noinspection JSUnresolvedReference
       tagify.__tagify?.destroy();
     }
-
-    const sheetId = sheet.id;
-    this.sheets[sheetId] = { app, appId, defaultPosition: { ...app.position } };
 
     // create tab navigation items
     const tabNav = document.createElement('a');
@@ -83,7 +93,7 @@ class RolodexApplication extends Application {
     app.setPosition({ left: 0, top: 0, width: bounds.width, height: bounds.height });
     app.render(true);
 
-    this.activateTab(sheetId);
+    if (activate) this.activateTab(sheetId);
   }
 
   async close(options) {
@@ -111,9 +121,9 @@ class RolodexApplication extends Application {
     const appId = this.activeSheet.dataset.appid;
     const app = ui.windows[appId];
 
-    if (!app || !app.token) return;
+    if (!app || !app.actor) return;
 
-    return canvas.ping(app.token.center);
+    return Promise.all(app.actor.getActiveTokens().map(async (t) => canvas.ping(t.center)));
   }
 
   async removeSheet(sheet) {
@@ -194,20 +204,19 @@ class RolodexApplication extends Application {
     const tab = event.target.dataset.tab;
     if (!tab) return;
 
-    const token = this.sheets[tab].app.token?.object;
-
-    if (token?.visible) {
-      token._onHoverIn(event, { hoverOutOthers: true });
+    for(const token of this.sheets[tab].app.actor.getActiveTokens()) {
+      if (token?.visible) {
+        token._onHoverIn(event);
+        this._highlights.push(token);
+      }
     }
   }
 
   _onTabHoverOut(event) {
     event.stopPropagation();
 
-    const tab = event.target.dataset.tab;
-    if (!tab) return;
-
-    this.sheets[tab].app.token?.object?._onHoverOut(event);
+    this._highlights.forEach((token) => token?._onHoverOut(event));
+    this._highlights = [];
   }
 }
 
@@ -234,13 +243,52 @@ export function registerSettings() {
     scope: 'client',
     type: Boolean
   });
+
+  game.keybindings.register(MODULE_ID, 'OpenRolodex', {
+    name: 'Open Rolodex',
+    hint: 'Add any selected tokens to the rolodex and open the rolodex window',
+    editable: [
+      {
+        key: 'KeyR',
+        modifiers: [KeyboardManager.MODIFIER_KEYS.ALT]
+      }
+    ],
+    onDown: selectAndOpenRolodex,
+    precedence: CONST.KEYBINDING_PRECEDENCE.NORMAL
+  });
+}
+
+async function selectAndOpenRolodex() {
+  const tokens = canvas.tokens.controlled;
+
+  if (tokens.length === 0) {
+    ui.notifications.warn(localize('rolodex.warning.noTokenOnHotkey'));
+    return;
+  }
+
+  await Promise.all(
+    tokens.map(async ({ actor }) => {
+      if (!actor.sheet.rendered) return actor.sheet._render(true);
+    })
+  );
+
+  for (const { actor } of tokens) {
+    await instance.addSheet(actor.sheet.element[0], false);
+  }
+
+  // delay to allow rendering events to finish
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      instance.activate({ id: Array.from(instance.rolodexTabs).at(-1).dataset.tab }).then(resolve).catch(reject);
+    }, 0);
+  });
 }
 
 export function setup() {
   if (!game.settings.get(MODULE_ID, 'RolodexEnabled')) return;
 
   if (!game.modules.get('lib-wrapper')?.active && game.user.isGM) {
-    ui.notifications.error('sheet-link rolodex requires the "libWrapper" module. Please install and activate it.');
+    ui.notifications.error(localize('rolodex.warning.libWrapper'));
     return;
   }
 
@@ -256,6 +304,5 @@ export function setup() {
 
 async function onStartRolodex(sheet) {
   const el = sheet.element[0];
-
   return instance.addSheet(el);
 }
