@@ -10,9 +10,9 @@
           "hint": "Enables the rolodex-like sheet tabulation, which allows multiple sheets to be grouped in a single window.",
           "title": "Enable Sheet Rolodex"
         },
-        "combatAutoSelect": {
-          "hint": "Automatically select the rolodex tab of an actor on its turn in the active combat.",
-          "title": "Link to Combat"
+        "syncWithCombat": {
+          "hint": "Synchronize the rolodex tab order and active tab with the active combat.",
+          "title": "Sync with Combat"
         }
       },
       "title": "Rolodex",

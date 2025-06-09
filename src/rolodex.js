@@ -1,6 +1,8 @@
 import { localize, MODULE_ID } from './index';
 
-class RolodexApplication extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
+class RolodexApplication extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.api.ApplicationV2
+) {
   static DEFAULT_OPTIONS = {
     id: 'rolodex',
     position: {
@@ -9,14 +11,8 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     },
     window: {
       resizable: true
-    },
-    // tabs: [
-    //   {
-    //     navSelector: '.sheet-navigation',
-    //     contentSelector: '.sheet-container'
-    //   }
-    // ]
-  }
+    }
+  };
 
   static PARTS = {
     tabs: {
@@ -25,24 +21,26 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     container: {
       template: 'modules/sheet-link/static/templates/rolodex-sheet-container.hbs'
     }
-  }
+  };
 
-  static TAB_GROUP = 'rolodex'
+  static TAB_GROUP = 'rolodex';
   static TABS = {
     [RolodexApplication.TAB_GROUP]: {
       tabs: []
     }
-  }
+  };
 
   constructor() {
     super();
 
     this._highlights = [];
+    this._hooks = {};
     this.sheets = {};
 
-    Hooks.on('combatTurnChange', this.onCombatTurnChange.bind(this));
-    Hooks.on('deleteCombat', this.onCombatDelete.bind(this));
-    Hooks.on('updateCombat', this.onCombatUpdate.bind(this));
+    this._hooks['combatTurnChange'] = Hooks.on('combatTurnChange', this.onCombatTurnChange.bind(this));
+    this._hooks['deleteCombat'] = Hooks.on('deleteCombat', this.onCombatDelete.bind(this));
+    this._hooks['updateCombat'] = Hooks.on('updateCombat', this.onCombatUpdate.bind(this));
+    this._hooks['updateCombatant'] = Hooks.on('updateCombatant', this.onCombatantUpdated.bind(this));
   }
 
   get activeSheet() {
@@ -65,8 +63,6 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     await this.maximize();
     this.bringToFront();
     this.changeTab(sheet.id, RolodexApplication.TAB_GROUP);
-    // this.bringToTop();
-    // this.activateTab(sheet.id);
   }
 
   async addSheet(sheet, activate = true) {
@@ -128,15 +124,17 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     app.setPosition({ left: 0, top: 0, width: bounds.width, height: bounds.height });
     app.render(true);
 
-    if (activate && (isActiveCombatant || !game.settings.get(MODULE_ID, 'RolodexCombatAutoSelect'))) {
+    if (activate && (isActiveCombatant || !game.settings.get(MODULE_ID, 'RolodexCombatSync'))) {
       this.changeTab(sheetId, RolodexApplication.TAB_GROUP);
     }
   }
 
   async close(options) {
-    Hooks.off('combatTurnChange', this.onCombatTurnChange);
-    Hooks.off('deleteCombat', this.onCombatDelete);
-    Hooks.off('updateCombat', this.onCombatUpdate);
+    for (const [hook, fn] of Object.entries(this._hooks)) {
+      Hooks.off(hook, fn);
+    }
+
+    this._hooks = {};
 
     await Promise.all([
       super.close(options),
@@ -169,6 +167,12 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     }
   }
 
+  async onCombatantUpdated() {
+    if (game.settings.get(MODULE_ID, 'RolodexCombatSync')) {
+      setTimeout(() => this.sortByTurnOrder(game.combat), 0);
+    }
+  }
+
   async onCombatTurnChange(combat, prior, current) {
     const el = this.element;
 
@@ -182,7 +186,7 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
         if (token.id === current.tokenId) {
           tab.classList.add('activeCombatant');
 
-          if (game.settings.get(MODULE_ID, 'RolodexCombatAutoSelect')) {
+          if (game.settings.get(MODULE_ID, 'RolodexCombatSync')) {
             this.changeTab(sheetId, RolodexApplication.TAB_GROUP);
           }
 
@@ -247,25 +251,35 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     }
   }
 
+  sortByTurnOrder(combat) {
+    if (!combat || !combat.active) return;
+
+    const el = this.element;
+    const order = combat.turns.map((c) => c.actorId);
+
+    console.log('combat', order);
+
+    for (let i = 0; i < order.length; i++) {
+      for (const [sheetId, { app }] of Object.entries(this.sheets)) {
+        const tab = el.querySelector(`.sheet-navigation a[id^=rolodex-tab][data-tab="${sheetId}"]`);
+        if (!tab || !app.actor) continue;
+
+        if (app.actor.id === order[i]) {
+          tab.parentElement.appendChild(tab);
+          break;
+        }
+      }
+    }
+  }
+
   _getActiveTabId() {
-    for(const tab of this.element.querySelectorAll(`.tabs [data-group="${RolodexApplication.TAB_GROUP}"]`)) {
+    for (const tab of this.element.querySelectorAll(`.tabs [data-group="${RolodexApplication.TAB_GROUP}"]`)) {
       if (tab.classList.contains('active')) {
         return tab.dataset.tab;
       }
     }
 
     return null;
-  }
-
-  _getHeaderButtons() {
-    const buttons = super._getHeaderButtons();
-    const closeBtn = buttons.find((b) => b.class === 'close');
-
-    // override the default class because the built-in listeners are bound with anonymous functions that are not removed on reparenting or re-rendering
-    // if this class is not changed, then a sheet that is removed from the rolodex and closed will also trigger close on the rolodex
-    if (closeBtn) closeBtn.class = 'rolodex-close';
-
-    return buttons;
   }
 
   async _onRender(context, options) {
@@ -351,9 +365,9 @@ export function registerSettings() {
     scope: 'client',
     type: Boolean
   });
-  game.settings.register(MODULE_ID, 'RolodexCombatAutoSelect', {
-    name: `${MODULE_ID}.rolodex.settings.combatAutoSelect.title`,
-    hint: `${MODULE_ID}.rolodex.settings.combatAutoSelect.hint`,
+  game.settings.register(MODULE_ID, 'RolodexCombatSync', {
+    name: `${MODULE_ID}.rolodex.settings.syncWithCombat.title`,
+    hint: `${MODULE_ID}.rolodex.settings.syncWithCombat.hint`,
     default: false,
     config: true,
     requiresReload: false,
