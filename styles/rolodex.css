@@ -44,7 +44,7 @@
             &::after {
               bottom: 0;
               content: '\f71d';
-              font-family: var(--fa-style-family, 'FontAwesome');
+              font-family: var(--fa-style-family-classic, 'FontAwesome');
               font-weight: 300;
               left: 50%;
               position: absolute;
