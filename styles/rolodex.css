@@ -4,17 +4,17 @@
 
     > .tab-bar {
       display: flex;
-      flex: 0;
       position: relative;
 
       > .sheet-navigation {
-        border-bottom: 1px solid var(--color-border-light-primary);
+        border-bottom: 1px solid var(--color-border-divider);
         display: flex;
         flex: 1;
+        justify-content: flex-start;
 
         > a {
-          border-right: 1px solid var(--color-border-light-primary);
-          color: var(--color-pf-alternate);
+          border-right: 1px solid var(--color-border-divider);
+          color: var(--color-text-secondary);
           display: block;
           font: 400 var(--font-size-14) var(--serif);
           overflow: hidden;
@@ -26,7 +26,7 @@
           white-space: nowrap;
 
           &.active {
-            color: var(--color-pf-primary);
+            color: var(--color-text-emphatic);
             font-weight: bold;
           }
 
@@ -55,9 +55,8 @@
       }
 
       > .sheet-navigation-controls {
-        background: var(--bg-dark);
-        border-left: 1px solid var(--color-border-light-primary);
-        bottom: 0;
+        background: var(--background);
+        bottom: 1px;
         box-shadow: -3px 0 5px 0 rgba(0, 0, 0, 0.5);
         display: flex;
         flex-direction: column;
@@ -65,12 +64,13 @@
         right: 0;
         padding: 0 0.25rem;
         position: absolute;
-        top: 0;
+        top: 1px;
       }
     }
 
     > .sheet-container {
       display: flex;
+      flex: 1;
       overflow: hidden;
 
       > .rolodex-sheet {

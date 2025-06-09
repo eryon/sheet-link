@@ -1,21 +1,37 @@
 import { localize, MODULE_ID } from './index';
 
-class RolodexApplication extends Application {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'rolodex',
+class RolodexApplication extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
+  static DEFAULT_OPTIONS = {
+    id: 'rolodex',
+    position: {
       height: 600,
-      resizable: true,
-      tabs: [
-        {
-          navSelector: '.sheet-navigation',
-          contentSelector: '.sheet-container'
-        }
-      ],
-      template: `modules/sheet-link/static/templates/rolodex.hbs`,
-      title: 'sheet-link.rolodex.title',
       width: 800
-    });
+    },
+    window: {
+      resizable: true
+    },
+    // tabs: [
+    //   {
+    //     navSelector: '.sheet-navigation',
+    //     contentSelector: '.sheet-container'
+    //   }
+    // ]
+  }
+
+  static PARTS = {
+    tabs: {
+      template: 'modules/sheet-link/static/templates/rolodex-tab-bar.hbs'
+    },
+    container: {
+      template: 'modules/sheet-link/static/templates/rolodex-sheet-container.hbs'
+    }
+  }
+
+  static TAB_GROUP = 'rolodex'
+  static TABS = {
+    [RolodexApplication.TAB_GROUP]: {
+      tabs: []
+    }
   }
 
   constructor() {
@@ -30,29 +46,35 @@ class RolodexApplication extends Application {
   }
 
   get activeSheet() {
-    const el = this.element[0];
+    const el = this.element;
     return el?.querySelector('.rolodex-sheet.active > .window-app');
   }
 
   get rolodexTabs() {
-    const el = this.element[0];
+    const el = this.element;
     return el?.querySelectorAll('[id^=rolodex-tab-]');
+  }
+
+  get title() {
+    return localize('rolodex.title');
   }
 
   async activate(sheet) {
     if (!this.sheets[sheet.id]) return;
 
     await this.maximize();
-    this.bringToTop();
-    this.activateTab(sheet.id);
+    this.bringToFront();
+    this.changeTab(sheet.id, RolodexApplication.TAB_GROUP);
+    // this.bringToTop();
+    // this.activateTab(sheet.id);
   }
 
   async addSheet(sheet, activate = true) {
-    if (!this.rendered) await this._render(true);
+    if (!this.rendered) await this.render(true);
 
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
-    const el = this.element[0];
+    const el = this.element;
     const isActiveCombatant = game.combat?.combatant?.actorId === app.actor.id;
     const sheetId = sheet.id;
 
@@ -73,6 +95,8 @@ class RolodexApplication extends Application {
     // create tab navigation items
     const tabNav = document.createElement('a');
     tabNav.id = `rolodex-tab-${sheetId}`;
+    tabNav.dataset.action = 'tab';
+    tabNav.dataset.group = RolodexApplication.TAB_GROUP;
     tabNav.dataset.tab = sheetId;
     tabNav.title = app.actor.name;
     tabNav.append(app.actor.name);
@@ -89,11 +113,12 @@ class RolodexApplication extends Application {
     // create tab content
     const tab = document.createElement('div');
     tab.id = `rolodex-sheet-${sheetId}`;
+    tab.dataset.group = RolodexApplication.TAB_GROUP;
     tab.dataset.tab = sheetId;
     tab.setAttribute('class', 'tab rolodex-sheet');
     tab.append(sheet);
 
-    const resizeHandle = el.querySelector('.window-resizable-handle');
+    const resizeHandle = el.querySelector('.window-resize-handle');
     resizeHandle.style.zIndex = Math.max(resizeHandle.style.zIndex, app.position.zIndex + 1);
 
     el.querySelector('.sheet-container').append(tab);
@@ -104,7 +129,7 @@ class RolodexApplication extends Application {
     app.render(true);
 
     if (activate && (isActiveCombatant || !game.settings.get(MODULE_ID, 'RolodexCombatAutoSelect'))) {
-      this.activateTab(sheetId);
+      this.changeTab(sheetId, RolodexApplication.TAB_GROUP);
     }
   }
 
@@ -132,7 +157,7 @@ class RolodexApplication extends Application {
   }
 
   async onCombatDelete(combat) {
-    const el = this.element[0];
+    const el = this.element;
 
     for (const [sheetId, { app }] of Object.entries(this.sheets)) {
       const tab = el.querySelector(`.sheet-navigation a[id^=rolodex-tab][data-tab="${sheetId}"]`);
@@ -145,7 +170,7 @@ class RolodexApplication extends Application {
   }
 
   async onCombatTurnChange(combat, prior, current) {
-    const el = this.element[0];
+    const el = this.element;
 
     for (const [sheetId, { app }] of Object.entries(this.sheets)) {
       const tab = el.querySelector(`.sheet-navigation a[id^=rolodex-tab][data-tab="${sheetId}"]`);
@@ -158,7 +183,7 @@ class RolodexApplication extends Application {
           tab.classList.add('activeCombatant');
 
           if (game.settings.get(MODULE_ID, 'RolodexCombatAutoSelect')) {
-            this.activateTab(sheetId);
+            this.changeTab(sheetId, RolodexApplication.TAB_GROUP);
           }
 
           break;
@@ -185,9 +210,10 @@ class RolodexApplication extends Application {
   }
 
   async removeSheet(sheet) {
+    const activeTab = this._getActiveTabId();
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
-    const el = this.element[0];
+    const el = this.element;
 
     // noinspection CssInvalidHtmlTagReference
     const tagify = sheet.querySelector('tagify-tags > input');
@@ -198,7 +224,7 @@ class RolodexApplication extends Application {
 
     document.body.append(sheet);
     app.setPosition(this.sheets[sheet.id].defaultPosition);
-    app.render(true);
+    await app.render(true);
 
     const tabNav = el.querySelector(`#rolodex-tab-${sheet.id}`);
     tabNav.removeEventListener('mouseout', this._onTabHoverOut);
@@ -210,15 +236,25 @@ class RolodexApplication extends Application {
 
     const managedSheets = Object.keys(this.sheets);
 
-    if (this._tabs[0].active === sheet.id) {
+    if (activeTab === sheet.id) {
       if (managedSheets.length > 0) {
-        this.activateTab(managedSheets.at(0));
+        this.changeTab(managedSheets.at(0), RolodexApplication.TAB_GROUP);
       }
     }
 
     if (managedSheets.length === 0) {
       await this.close({ force: true });
     }
+  }
+
+  _getActiveTabId() {
+    for(const tab of this.element.querySelectorAll(`.tabs [data-group="${RolodexApplication.TAB_GROUP}"]`)) {
+      if (tab.classList.contains('active')) {
+        return tab.dataset.tab;
+      }
+    }
+
+    return null;
   }
 
   _getHeaderButtons() {
@@ -232,28 +268,28 @@ class RolodexApplication extends Application {
     return buttons;
   }
 
-  async _renderInner(data, options) {
-    const html = await super._renderInner(data, options);
+  async _onRender(context, options) {
+    await super._onRender(context, options);
 
-    html[0]
+    this.element
       .querySelector('.sheet-navigation-controls [data-action="maximize"]')
       .addEventListener('click', async () => this.removeSheet(this.activeSheet));
-    html[0]
+    this.element
       .querySelector('.sheet-navigation-controls [data-action="ping"]')
       .addEventListener('click', async () => this.pingActiveToken());
-
-    return html;
   }
 
-  _onResize(event) {
-    super._onResize(event);
+  setPosition(position) {
+    const appliedPosition = super.setPosition(position);
 
-    const el = this.element[0];
+    const el = this.element;
     const bounds = el.querySelector('.sheet-container').getBoundingClientRect();
 
     Object.values(this.sheets).forEach(({ app }) => {
       app.setPosition({ left: 0, top: 0, width: bounds.width, height: bounds.height });
     });
+
+    return appliedPosition;
   }
 
   async _onTabDblClick(event) {
