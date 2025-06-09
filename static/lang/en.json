@@ -11,8 +11,12 @@
           "title": "Enable Sheet Rolodex"
         },
         "syncWithCombat": {
-          "hint": "Synchronize the rolodex tab order and active tab with the active combat.",
+          "hint": "Synchronize the rolodex tab order and active tab with the active combat encounter.",
           "title": "Sync with Combat"
+        },
+        "removeOnDeath": {
+          "hint": "Remove the sheet for an actor that reaches 0 HP while a combat encounter is active.",
+          "title": "Remove on Death"
         }
       },
       "title": "Rolodex",

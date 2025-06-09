@@ -39,6 +39,7 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
 
     this._hooks['combatTurnChange'] = Hooks.on('combatTurnChange', this.onCombatTurnChange.bind(this));
     this._hooks['deleteCombat'] = Hooks.on('deleteCombat', this.onCombatDelete.bind(this));
+    this._hooks['updateActor'] = Hooks.on('updateActor', this.onActorUpdate.bind(this));
     this._hooks['updateCombat'] = Hooks.on('updateCombat', this.onCombatUpdate.bind(this));
     this._hooks['updateCombatant'] = Hooks.on('updateCombatant', this.onCombatantUpdated.bind(this));
   }
@@ -78,7 +79,7 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
       return this.activate(sheet);
     }
 
-    this.sheets[sheetId] = { app, appId, defaultPosition: { ...app.position } };
+    this.sheets[sheetId] = { app, appId, defaultPosition: { ...app.position }, sheet };
 
     // for sheets that use the Tagify library, destroy the handler (it will be recreated on re-render)
     // noinspection CssInvalidHtmlTagReference
@@ -154,6 +155,19 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     return app.close({ force: true });
   }
 
+  async onActorUpdate(actor, { system }, changes) {
+    if (!game.settings.get(MODULE_ID, 'RolodexCombatRemoveOnDeath')) return;
+    if (!game.combat || !game.combat.active || !game.combat.turns.find(c => c.actorId === actor.id)) return;
+
+    if (changes.damageTaken > 0 && system?.attributes?.hp?.value === 0) {
+      for (const { app, sheet } of Object.values(this.sheets)) {
+        if (actor.id === app.actor.id) {
+          await this.removeSheet(sheet, false);
+        }
+      }
+    }
+  }
+
   async onCombatDelete(combat) {
     const el = this.element;
 
@@ -213,7 +227,7 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     return Promise.all(app.actor.getActiveTokens().map(async (t) => canvas.ping(t.center)));
   }
 
-  async removeSheet(sheet) {
+  async removeSheet(sheet, appendToDOM = true) {
     const activeTab = this._getActiveTabId();
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
@@ -226,9 +240,13 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
       tagify.__tagify?.destroy();
     }
 
-    document.body.append(sheet);
-    app.setPosition(this.sheets[sheet.id].defaultPosition);
-    await app.render(true);
+    if (appendToDOM) {
+      document.body.append(sheet);
+      app.setPosition(this.sheets[sheet.id].defaultPosition);
+      await app.render(true);
+    } else {
+      setTimeout(() => app.close({ animate: false, force: true }), 0);
+    }
 
     const tabNav = el.querySelector(`#rolodex-tab-${sheet.id}`);
     tabNav.removeEventListener('mouseout', this._onTabHoverOut);
@@ -368,6 +386,15 @@ export function registerSettings() {
   game.settings.register(MODULE_ID, 'RolodexCombatSync', {
     name: `${MODULE_ID}.rolodex.settings.syncWithCombat.title`,
     hint: `${MODULE_ID}.rolodex.settings.syncWithCombat.hint`,
+    default: false,
+    config: true,
+    requiresReload: false,
+    scope: 'client',
+    type: Boolean
+  });
+  game.settings.register(MODULE_ID, 'RolodexCombatRemoveOnDeath', {
+    name: `${MODULE_ID}.rolodex.settings.removeOnDeath.title`,
+    hint: `${MODULE_ID}.rolodex.settings.removeOnDeath.hint`,
     default: false,
     config: true,
     requiresReload: false,
