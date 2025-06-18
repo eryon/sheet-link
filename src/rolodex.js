@@ -130,6 +130,17 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     }
   }
 
+  changeTab(tab, group, { event, navElement, force = false, updatePosition = true } = {}) {
+    super.changeTab(tab, group, { event, navElement, force, updatePosition });
+
+    navElement ||= this.element.querySelector('.sheet-navigation');
+    const activeTab = navElement.querySelector('.active')
+
+    if(activeTab) {
+        activeTab.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
   async close(options) {
     for (const [hook, fn] of Object.entries(this._hooks)) {
       Hooks.off(hook, fn);
@@ -274,8 +285,6 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
 
     const el = this.element;
     const order = combat.turns.map((c) => c.actorId);
-
-    console.log('combat', order);
 
     for (let i = 0; i < order.length; i++) {
       for (const [sheetId, { app }] of Object.entries(this.sheets)) {

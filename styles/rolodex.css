@@ -3,7 +3,6 @@
     padding: 0;
 
     > .tab-bar {
-      display: flex;
       position: relative;
 
       > .sheet-navigation {
@@ -11,11 +10,14 @@
         display: flex;
         flex: 1;
         justify-content: flex-start;
+        margin-right: 22px;
+        overflow: auto hidden;
 
         > a {
           border-right: 1px solid var(--color-border-divider);
           color: var(--color-text-secondary);
           display: block;
+          flex: none;
           font: 400 var(--font-size-14) var(--serif);
           overflow: hidden;
           padding: 0.5rem;
@@ -55,7 +57,6 @@
       }
 
       > .sheet-navigation-controls {
-        background: var(--background);
         bottom: 1px;
         box-shadow: -3px 0 5px 0 rgba(0, 0, 0, 0.5);
         display: flex;
