@@ -134,10 +134,10 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     super.changeTab(tab, group, { event, navElement, force, updatePosition });
 
     navElement ||= this.element.querySelector('.sheet-navigation');
-    const activeTab = navElement.querySelector('.active')
+    const activeTab = navElement.querySelector('.active');
 
-    if(activeTab) {
-        activeTab.scrollIntoView({ behavior: 'smooth' });
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth' });
     }
   }
 
@@ -385,11 +385,11 @@ Hooks.once('libWrapper.Ready', () => {
   libWrapper.register(
     MODULE_ID,
     'Application.prototype.close',
-    async function() {
+    async function () {
       return instance.removeSheet(this.element[0], false);
     },
     'LISTENER'
-  )
+  );
 });
 
 export function registerSettings() {
@@ -405,6 +405,15 @@ export function registerSettings() {
   game.settings.register(MODULE_ID, 'RolodexCombatSync', {
     name: `${MODULE_ID}.rolodex.settings.syncWithCombat.title`,
     hint: `${MODULE_ID}.rolodex.settings.syncWithCombat.hint`,
+    default: false,
+    config: true,
+    requiresReload: false,
+    scope: 'client',
+    type: Boolean
+  });
+  game.settings.register(MODULE_ID, 'RolodexCombatOpenOnStart', {
+    name: `${MODULE_ID}.rolodex.settings.openOnCombat.title`,
+    hint: `${MODULE_ID}.rolodex.settings.openOnCombat.hint`,
     default: false,
     config: true,
     requiresReload: false,
@@ -430,38 +439,28 @@ export function registerSettings() {
         modifiers: [KeyboardManager.MODIFIER_KEYS.ALT]
       }
     ],
-    onDown: selectAndOpenRolodex,
+    onDown: async () => {
+      const tokens = canvas.tokens.controlled;
+
+      if (tokens.length === 0) {
+        ui.notifications.warn(localize('rolodex.warning.noTokenOnHotkey'));
+        return;
+      }
+
+      return selectAndOpenRolodex(tokens.map(({ actor }) => actor));
+    },
     precedence: CONST.KEYBINDING_PRECEDENCE.NORMAL
   });
 }
 
-async function selectAndOpenRolodex() {
-  const tokens = canvas.tokens.controlled;
+async function selectAndOpenRolodex(actors) {
+  for (const actor of actors) {
+    if (!actor.sheet.rendered) {
+      await actor.sheet._render(true);
+    }
 
-  if (tokens.length === 0) {
-    ui.notifications.warn(localize('rolodex.warning.noTokenOnHotkey'));
-    return;
-  }
-
-  await Promise.all(
-    tokens.map(async ({ actor }) => {
-      if (!actor.sheet.rendered) return actor.sheet._render(true);
-    })
-  );
-
-  for (const { actor } of tokens) {
     await instance.addSheet(actor.sheet.element[0], false);
   }
-
-  // delay to allow rendering events to finish
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      instance
-        .activate({ id: Array.from(instance.rolodexTabs).at(-1).dataset.tab })
-        .then(resolve)
-        .catch(reject);
-    }, 0);
-  });
 }
 
 export function setup() {
@@ -480,6 +479,23 @@ export function setup() {
       onclick: () => onStartRolodex(sheet)
     });
   });
+  Hooks.on('combatStart', onCombatStart);
+}
+
+async function onCombatStart(combat) {
+  if (game.settings.get(MODULE_ID, 'RolodexCombatOpenOnStart')) {
+    const npcActors = [];
+
+    for (const combatant of combat.turns) {
+      if (combatant.isNPC) {
+        npcActors.push(combatant.actor);
+      }
+    }
+
+    if (npcActors.length > 0) {
+      return selectAndOpenRolodex(npcActors);
+    }
+  }
 }
 
 async function onStartRolodex(sheet) {

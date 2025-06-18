@@ -10,13 +10,17 @@
           "hint": "Enables the rolodex-like sheet tabulation, which allows multiple sheets to be grouped in a single window.",
           "title": "Enable Sheet Rolodex"
         },
-        "syncWithCombat": {
-          "hint": "Synchronize the rolodex tab order and active tab with the active combat encounter.",
-          "title": "Sync with Combat"
-        },
         "removeOnDeath": {
           "hint": "Remove the sheet for an actor that reaches 0 HP while a combat encounter is active.",
           "title": "Remove on Death"
+        },
+        "openOnCombat": {
+          "hint": "Open the rolodex with all NPCs when combat starts.",
+          "title": "Open NPCs with Combat"
+        },
+        "syncWithCombat": {
+          "hint": "Synchronize the rolodex tab order and active tab with the active combat encounter.",
+          "title": "Sync with Combat"
         }
       },
       "title": "Rolodex",
