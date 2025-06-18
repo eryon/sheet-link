@@ -168,7 +168,7 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
 
   async onActorUpdate(actor, { system }, changes) {
     if (!game.settings.get(MODULE_ID, 'RolodexCombatRemoveOnDeath')) return;
-    if (!game.combat || !game.combat.active || !game.combat.turns.find(c => c.actorId === actor.id)) return;
+    if (!game.combat || !game.combat.active || !game.combat.turns.find((c) => c.actorId === actor.id)) return;
 
     if (changes.damageTaken > 0 && system?.attributes?.hp?.value === 0) {
       for (const { app, sheet } of Object.values(this.sheets)) {
@@ -239,6 +239,8 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
   }
 
   async removeSheet(sheet, appendToDOM = true) {
+    if (!this.sheets[sheet.id]) return;
+
     const activeTab = this._getActiveTabId();
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
@@ -380,6 +382,14 @@ Hooks.once('libWrapper.Ready', () => {
     },
     'LISTENER'
   );
+  libWrapper.register(
+    MODULE_ID,
+    'Application.prototype.close',
+    async function() {
+      return instance.removeSheet(this.element[0], false);
+    },
+    'LISTENER'
+  )
 });
 
 export function registerSettings() {
