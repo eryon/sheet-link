@@ -1,6 +1,6 @@
 # PF2e Sheet Link
 
-![Supported FVTT](https://img.shields.io/endpoint?url=https%3A%2F%2Ffoundryshields.com%2Fversion%3Fstyle%3Dfor-the-badge%26url%3Dhttps%3A%2F%2Fgithub.com%2Feryon%sheet-link%2Fraw%2Fmain%2Fmodule.json)
+![Supported FVTT](https://img.shields.io/endpoint?url=https%3A%2F%2Ffoundryshields.com%2Fversion%3Fstyle%3Dflat%26url%3Dhttps%3A%2F%2Fgithub.com%2Feryon%2Fsheet-link%2Freleases%2Flatest%2Fdownload%2Fmodule.json)
 
 This module offers gamemasters and players different ways to manage multiple actor sheets and get the most out of their
 available screen real estate.

@@ -1,5 +1,19 @@
 # Sheet Link
 
+## 2.1.0 - 2025-06-18
+
+### New Features
+
+#### rolodex
+- Adds an option to open the rolodex with all NPC sheets when a combat encounter starts (#4)
+
+### Bug Fixes
+
+#### rolodex
+
+- Added horizontal scrollbar to the tab container when many sheets are open
+- Added a hook to remove rolodex sheets when closed externally (fixes #3)
+
 ## 2.0.0 - 2025-06-09
 
 ### Breaking Changes

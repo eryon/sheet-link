@@ -2,7 +2,7 @@
   "id": "sheet-link",
   "title": "PF2e Sheet Link",
   "description": "A module to link actor sheets through behavior and UI",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "authors": [
     {
       "name": "anathemort",
