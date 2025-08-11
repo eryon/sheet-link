@@ -72,7 +72,7 @@ class RolodexApplication extends foundry.applications.api.HandlebarsApplicationM
     const appId = sheet.dataset.appid;
     const app = ui.windows[appId];
     const el = this.element;
-    const isActiveCombatant = game.combat?.combatant?.actorId === app.actor.id;
+    const isActiveCombatant = game.combat?.combatant?.tokenId === app.actor.token.id;
     const sheetId = sheet.id;
 
     if (this.sheets[sheetId]) {

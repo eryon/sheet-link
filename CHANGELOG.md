@@ -1,5 +1,12 @@
 # Sheet Link
 
+## 2.1.1 - 2025-08-11
+
+### Bug Fixes
+
+#### rolodex
+- Fixed an issue rendering sheet tabs with different tokens using the same unlinked actor
+
 ## 2.1.0 - 2025-06-18
 
 ### New Features

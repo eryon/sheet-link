@@ -2,7 +2,7 @@
   "id": "sheet-link",
   "title": "PF2e Sheet Link",
   "description": "A module to link actor sheets through behavior and UI",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "authors": [
     {
       "name": "anathemort",
@@ -11,7 +11,7 @@
   ],
   "compatibility": {
     "minimum": "13",
-    "verified": "13.345"
+    "verified": "13.347"
   },
   "bugs": "https://github.com/eryon/sheet-link/issues",
   "changelog": "https://github.com/eryon/sheet-link/blob/main/CHANGELOG.md",
